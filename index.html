@@ -16,12 +16,12 @@
       </div>
     </div>
 
-    <div class="tabs">
-      <button id="homeTabBtn" class="tab-btn active-tab">Home</button>
-      <button id="playlistTabBtn" class="tab-btn">Playlists</button>
+    <div class="nav-tabs">
+      <button id="homeTabBtn">Home</button>
+      <button id="playlistTabBtn">Playlists</button>
     </div>
 
-    <div id="homeTab" class="tab-section">
+    <div id="homeSection">
       <div class="toolbar-box">
         <div class="search-row">
           <input type="text" id="searchInput" placeholder="Search games by name" />
@@ -41,7 +41,7 @@
       </div>
     </div>
 
-    <div id="playlistTab" class="tab-section hidden">
+    <div id="playlistSection" class="hidden">
       <div class="panel">
         <h2>My Playlists</h2>
 
@@ -49,7 +49,7 @@
           <select id="playlistSelect"></select>
           <input type="text" id="newPlaylistName" placeholder="New playlist name" />
           <button id="createPlaylistBtn">Create Playlist</button>
-          <button id="deletePlaylistBtn" class="danger-btn">Delete Playlist</button>
+          <button id="deletePlaylistBtn">Delete Playlist</button>
         </div>
 
         <h3 id="activePlaylistTitle">Selected Playlist</h3>
