@@ -8,11 +8,6 @@ if (!currentUserId) {
   window.location.href = "login.html";
 }
 
-const homeTabBtn = document.getElementById("homeTabBtn");
-const playlistTabBtn = document.getElementById("playlistTabBtn");
-const homeTab = document.getElementById("homeTab");
-const playlistTab = document.getElementById("playlistTab");
-
 const searchBtn = document.getElementById("searchBtn");
 const showAllBtn = document.getElementById("showAllBtn");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -20,6 +15,11 @@ const clearFilterBtn = document.getElementById("clearFilterBtn");
 const createPlaylistBtn = document.getElementById("createPlaylistBtn");
 const deletePlaylistBtn = document.getElementById("deletePlaylistBtn");
 const playlistSelect = document.getElementById("playlistSelect");
+
+const homeTabBtn = document.getElementById("homeTabBtn");
+const playlistTabBtn = document.getElementById("playlistTabBtn");
+const homeSection = document.getElementById("homeSection");
+const playlistSection = document.getElementById("playlistSection");
 
 const searchInput = document.getElementById("searchInput");
 const newPlaylistName = document.getElementById("newPlaylistName");
@@ -29,55 +29,42 @@ const playlistList = document.getElementById("playlistList");
 const filterLabel = document.getElementById("filterLabel");
 const activePlaylistTitle = document.getElementById("activePlaylistTitle");
 
-const confirmBox = document.createElement("div");
-confirmBox.className = "confirm-box";
-confirmBox.style.display = "none";
-document.body.appendChild(confirmBox);
-
 currentUserText.textContent = `Logged in as User ${currentUserId}`;
 
-homeTabBtn.addEventListener("click", () => showTab("home"));
-playlistTabBtn.addEventListener("click", () => showTab("playlists"));
 searchBtn.addEventListener("click", searchGames);
 showAllBtn.addEventListener("click", showAllGames);
 logoutBtn.addEventListener("click", logout);
 clearFilterBtn.addEventListener("click", clearFilter);
 createPlaylistBtn.addEventListener("click", createPlaylist);
+playlistSelect.addEventListener("change", changePlaylist);
+homeTabBtn.addEventListener("click", showHomeTab);
+playlistTabBtn.addEventListener("click", showPlaylistTab);
 
 if (deletePlaylistBtn) {
   deletePlaylistBtn.addEventListener("click", deletePlaylist);
 }
 
-playlistSelect.addEventListener("change", changePlaylist);
-
-function showMessage(text) {
-  confirmBox.textContent = text;
-  confirmBox.style.display = "block";
-
-  setTimeout(() => {
-    confirmBox.style.display = "none";
-  }, 2000);
+function showHomeTab() {
+  homeSection.classList.remove("hidden");
+  playlistSection.classList.add("hidden");
 }
 
-function showTab(tabName) {
-  if (tabName === "home") {
-    homeTab.classList.remove("hidden");
-    playlistTab.classList.add("hidden");
-    homeTabBtn.classList.add("active-tab");
-    playlistTabBtn.classList.remove("active-tab");
-  } else {
-    playlistTab.classList.remove("hidden");
-    homeTab.classList.add("hidden");
-    playlistTabBtn.classList.add("active-tab");
-    homeTabBtn.classList.remove("active-tab");
-    loadPlaylists();
-  }
+function showPlaylistTab() {
+  playlistSection.classList.remove("hidden");
+  homeSection.classList.add("hidden");
+  loadPlaylists();
 }
 
 async function loadGames() {
   try {
     const res = await fetch(`${baseUrl}/games`);
     const games = await res.json();
+
+    if (!res.ok) {
+      gamesList.innerHTML = `<p class="empty-text">${games.error || "Could not load games."}</p>`;
+      return;
+    }
+
     renderGames(games);
   } catch (err) {
     gamesList.innerHTML = `<p class="empty-text">Could not load games.</p>`;
@@ -117,7 +104,6 @@ async function showGamesByDeveloper(devId, devName) {
   };
 
   updateFilterLabel();
-  showTab("home");
 
   try {
     const res = await fetch(`${baseUrl}/games/by-developer/${devId}`);
@@ -136,7 +122,6 @@ async function showGamesByPublisher(pubId, pubName) {
   };
 
   updateFilterLabel();
-  showTab("home");
 
   try {
     const res = await fetch(`${baseUrl}/games/by-publisher/${pubId}`);
@@ -184,22 +169,34 @@ function renderGames(games) {
       ? `<span class="meta-link" onclick="showGamesByPublisher(${game.pub_id}, '${escapeQuotes(game.pub_name)}')">${game.pub_name}</span>`
       : "Unknown";
 
-    const cover = game.cover || "https://via.placeholder.com/300x400?text=No+Cover";
+    const coverImg = game.cover
+      ? `<img class="game-cover" src="${game.cover}" alt="${game.name} cover" onerror="this.src='https://via.placeholder.com/300x220?text=No+Image';" />`
+      : `<img class="game-cover" src="https://via.placeholder.com/300x220?text=No+Image" alt="No cover" />`;
+
+    const releaseDate = getReleaseField(game, ["released_date", "release_date", "releaseddate", "released"]);
+    const releasedOn = getReleaseField(game, ["released_on", "release_on", "platform", "releasedon"]);
+    const languages = getReleaseField(game, ["released_languages", "release_languages", "languages", "language"]);
 
     div.innerHTML = `
       <div class="game-info">
         <h3>${game.name}</h3>
-        <p><strong>Genre:</strong> ${game.genre}</p>
-        <p><strong>Price:</strong> $${game.price}</p>
-        <p><strong>Players:</strong> ${game.player_amount}</p>
-        <p><strong>Reviews:</strong> ${game.reviews}</p>
-        <p><strong>Developer:</strong> ${devText}</p>
-        <p><strong>Publisher:</strong> ${pubText}</p>
-        <p>${game.description}</p>
+
+        <div class="game-meta-grid">
+          <p><strong>Genre:</strong> ${game.genre || "N/A"}</p>
+          <p><strong>Price:</strong> $${game.price || "N/A"}</p>
+          <p><strong>Players:</strong> ${game.player_amount || "N/A"}</p>
+          <p><strong>Reviews:</strong> ${game.reviews || "N/A"}</p>
+          <p><strong>Release Date:</strong> ${formatDate(releaseDate)}</p>
+          <p><strong>Released On:</strong> ${releasedOn}</p>
+          <p><strong>Languages:</strong> ${languages}</p>
+          <p><strong>Developer:</strong> ${devText}</p>
+          <p><strong>Publisher:</strong> ${pubText}</p>
+        </div>
+
+        <p class="game-description">${game.description || ""}</p>
         <button onclick="addToPlaylist(${game.game_id})">Add to Playlist</button>
       </div>
-
-      <img class="game-cover" src="${cover}" alt="${escapeQuotes(game.name)} cover">
+      ${coverImg}
     `;
 
     gamesList.appendChild(div);
@@ -225,7 +222,7 @@ async function loadPlaylists() {
     playlists.forEach((playlist) => {
       const option = document.createElement("option");
       option.value = playlist.list_id;
-      option.textContent = playlist.listname || playlist.list_name || playlist.list_id;
+      option.textContent = playlist.listname || playlist.list_id;
       playlistSelect.appendChild(option);
     });
 
@@ -244,10 +241,7 @@ async function loadPlaylists() {
       (playlist) => String(playlist.list_id) === String(activePlaylistId)
     );
 
-    activePlaylistTitle.textContent = selectedPlaylist
-      ? selectedPlaylist.listname || selectedPlaylist.list_name || "Selected Playlist"
-      : "Selected Playlist";
-
+    activePlaylistTitle.textContent = selectedPlaylist ? selectedPlaylist.listname : "Selected Playlist";
     loadPlaylistGames();
   } catch (err) {
     playlistList.innerHTML = `<p class="empty-text">Could not load playlists.</p>`;
@@ -281,17 +275,13 @@ function renderPlaylist(games) {
     const div = document.createElement("div");
     div.className = "game-card";
 
-    const cover = game.cover || "https://via.placeholder.com/300x400?text=No+Cover";
-
     div.innerHTML = `
       <div class="game-info">
         <h3>${game.name}</h3>
-        <p><strong>Genre:</strong> ${game.genre}</p>
-        <p><strong>Price:</strong> $${game.price}</p>
+        <p><strong>Genre:</strong> ${game.genre || "N/A"}</p>
+        <p><strong>Price:</strong> $${game.price || "N/A"}</p>
         <button onclick="removeFromPlaylist(${game.game_id})">Remove</button>
       </div>
-
-      <img class="game-cover small-cover" src="${cover}" alt="${escapeQuotes(game.name)} cover">
     `;
 
     playlistList.appendChild(div);
@@ -309,13 +299,8 @@ async function createPlaylist() {
   try {
     const res = await fetch(`${baseUrl}/playlists`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        userId: currentUserId,
-        listName: listName
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: currentUserId, listName })
     });
 
     const data = await res.json();
@@ -329,7 +314,6 @@ async function createPlaylist() {
     activePlaylistId = data.playlist.list_id;
     localStorage.setItem("activePlaylistId", activePlaylistId);
     await loadPlaylists();
-    showMessage("Playlist created ✔");
   } catch (err) {
     alert("Create playlist failed");
   }
@@ -337,21 +321,15 @@ async function createPlaylist() {
 
 async function deletePlaylist() {
   if (!activePlaylistId) {
-    alert("No playlist selected");
+    alert("Select a playlist first");
     return;
   }
-
-  if (!confirm("Delete this playlist?")) return;
 
   try {
     const res = await fetch(`${baseUrl}/playlists/${activePlaylistId}`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        userId: currentUserId
-      })
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: currentUserId })
     });
 
     const data = await res.json();
@@ -361,10 +339,9 @@ async function deletePlaylist() {
       return;
     }
 
-    activePlaylistId = null;
     localStorage.removeItem("activePlaylistId");
+    activePlaylistId = null;
     await loadPlaylists();
-    showMessage("Playlist deleted ✔");
   } catch (err) {
     alert("Delete playlist failed");
   }
@@ -373,83 +350,77 @@ async function deletePlaylist() {
 function changePlaylist() {
   activePlaylistId = playlistSelect.value;
   localStorage.setItem("activePlaylistId", activePlaylistId);
-
-  const selectedText = playlistSelect.options[playlistSelect.selectedIndex]?.text || "Selected Playlist";
-  activePlaylistTitle.textContent = selectedText;
-
+  activePlaylistTitle.textContent = playlistSelect.options[playlistSelect.selectedIndex].text;
   loadPlaylistGames();
 }
 
 async function addToPlaylist(gameId) {
-  if (!currentUserId) {
-    alert("Login first");
-    return;
-  }
-
   if (!activePlaylistId) {
     alert("Create or select a playlist first");
-    showTab("playlists");
     return;
   }
 
   try {
     const res = await fetch(`${baseUrl}/playlist/add`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         userId: currentUserId,
         playlistId: activePlaylistId,
-        gameId: gameId
+        gameId
       })
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      showMessage(data.error || "Could not add game");
+      alert(data.error || "Could not add game");
       return;
     }
 
-    loadPlaylistGames();
-    showMessage("Game added to playlist ✔");
+    alert("Game added to playlist");
   } catch (err) {
-    showMessage("Add failed");
+    alert("Add failed");
   }
 }
 
 async function removeFromPlaylist(gameId) {
-  if (!currentUserId || !activePlaylistId) {
-    alert("Select a playlist first");
-    return;
-  }
-
   try {
     const res = await fetch(`${baseUrl}/playlist/remove`, {
       method: "DELETE",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         userId: currentUserId,
         playlistId: activePlaylistId,
-        gameId: gameId
+        gameId
       })
     });
 
     const data = await res.json();
 
     if (!res.ok) {
-      showMessage(data.error || "Could not remove game");
+      alert(data.error || "Could not remove game");
       return;
     }
 
     loadPlaylistGames();
-    showMessage("Game removed ✔");
   } catch (err) {
-    showMessage("Remove failed");
+    alert("Remove failed");
   }
+}
+
+function getReleaseField(game, possibleNames) {
+  if (!game.release_info) return "N/A";
+  for (const name of possibleNames) {
+    if (game.release_info[name]) return game.release_info[name];
+  }
+  return "N/A";
+}
+
+function formatDate(dateValue) {
+  if (!dateValue || dateValue === "N/A") return "N/A";
+  const date = new Date(dateValue);
+  return isNaN(date) ? dateValue : date.toLocaleDateString();
 }
 
 function logout() {
@@ -462,6 +433,7 @@ function escapeQuotes(text) {
   return String(text).replace(/'/g, "\\'");
 }
 
+showHomeTab();
 loadGames();
 loadPlaylists();
 updateFilterLabel();
