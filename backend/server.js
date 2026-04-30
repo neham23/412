@@ -29,7 +29,8 @@ function gameQuery(baseWhere = "", params = []) {
         d.dev_id,
         d.dev_name,
         p.pub_id,
-        p.pub_name
+        p.pub_name,
+        row_to_json(r) AS release_info
       FROM game g
       LEFT JOIN makes m ON g.game_id = m.game_id
       LEFT JOIN developer d ON m.dev_id = d.dev_id
@@ -65,9 +66,8 @@ app.get("/games/search", async (req, res) => {
 
 app.get("/games/by-developer/:devId", async (req, res) => {
   try {
-    const devId = req.params.devId;
     const result = await pool.query(
-      gameQuery("WHERE d.dev_id = $1", [devId])
+      gameQuery("WHERE d.dev_id = $1", [req.params.devId])
     );
     res.json(result.rows);
   } catch (err) {
@@ -77,9 +77,8 @@ app.get("/games/by-developer/:devId", async (req, res) => {
 
 app.get("/games/by-publisher/:pubId", async (req, res) => {
   try {
-    const pubId = req.params.pubId;
     const result = await pool.query(
-      gameQuery("WHERE p.pub_id = $1", [pubId])
+      gameQuery("WHERE p.pub_id = $1", [req.params.pubId])
     );
     res.json(result.rows);
   } catch (err) {
@@ -89,11 +88,9 @@ app.get("/games/by-publisher/:pubId", async (req, res) => {
 
 app.get("/users/:userId", async (req, res) => {
   try {
-    const userId = req.params.userId;
-
     const result = await pool.query(
       "SELECT * FROM users WHERE user_id = $1",
-      [userId]
+      [req.params.userId]
     );
 
     if (result.rows.length === 0) {
@@ -108,8 +105,6 @@ app.get("/users/:userId", async (req, res) => {
 
 app.get("/users/:userId/playlists", async (req, res) => {
   try {
-    const userId = req.params.userId;
-
     const result = await pool.query(
       `
       SELECT p.list_id, p.listname
@@ -118,7 +113,7 @@ app.get("/users/:userId/playlists", async (req, res) => {
       WHERE c.user_id = $1
       ORDER BY p.list_id
       `,
-      [userId]
+      [req.params.userId]
     );
 
     res.json(result.rows);
@@ -165,7 +160,7 @@ app.post("/playlists", async (req, res) => {
 
 app.delete("/playlists/:playlistId", async (req, res) => {
   try {
-    const playlistId = req.params.playlistId;
+    const { playlistId } = req.params;
     const { userId } = req.body;
 
     const ownership = await pool.query(
